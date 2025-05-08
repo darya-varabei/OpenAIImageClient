@@ -1,9 +1,7 @@
-// The Swift Programming Language
-// https://docs.swift.org/swift-book
 
 import Foundation
 
-public final class OpenAIImageClient {
+public final class OpenAIImageClient: @unchecked Sendable {
     
     private let apiKey: String
     private let session: URLSession
