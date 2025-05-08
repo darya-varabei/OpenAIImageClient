@@ -18,108 +18,56 @@ public final class OpenAIImageClient: @unchecked Sendable {
         }
     }
     
-    public func editImage(
+    public func generateImage(
             prompt: String,
-            image: Data,
-            mask: Data? = nil,
-            n: Int = 1,
-            size: String = "1024x1024"
-        ) async throws -> [OpenAIImageEditResult] {
-            
-            let request = try createRequest(
-                prompt: prompt,
-                image: image,
-                mask: mask,
-                n: n,
-                size: size
-            )
-            
+            model: String = "gpt-image-1",
+            size: String = "1024x1024",
+            n: Int = 1
+        ) async throws -> [OpenAIImageResult] {
+            let url = URL(string: "https://api.openai.com/v1/images/generations")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let body: [String: Any] = [
+                "prompt": prompt,
+                "model": model,
+                "n": n,
+                "size": size,
+                "response_format": "b64_json"
+            ]
+
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
             let (data, response) = try await session.data(for: request)
+
             guard let httpResponse = response as? HTTPURLResponse,
                   (200..<300).contains(httpResponse.statusCode) else {
                 let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw NSError(domain: "OpenAIImageEditClient", code: 1, userInfo: [
+                throw NSError(domain: "OpenAIImageGenerationClient", code: 1, userInfo: [
                     NSLocalizedDescriptionKey: "Request failed: \(msg)"
                 ])
             }
 
-            struct OpenAIImageResponse: Decodable {
-                let data: [ImageData]
+            struct APIResponse: Decodable {
                 struct ImageData: Decodable {
                     let b64_json: String
                 }
+                let data: [ImageData]
             }
 
-            let decoded = try JSONDecoder().decode(OpenAIImageResponse.self, from: data)
+            let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
 
-            let results: [OpenAIImageEditResult] = try decoded.data.map { imageData in
-                guard let decodedData = Data(base64Encoded: imageData.b64_json) else {
-                    throw NSError(domain: "OpenAIImageEditClient", code: 2, userInfo: [
-                        NSLocalizedDescriptionKey: "Failed to decode base64 image"
+            return try decoded.data.map { imageData in
+                guard let imageData = Data(base64Encoded: imageData.b64_json) else {
+                    throw NSError(domain: "OpenAIImageGenerationClient", code: 2, userInfo: [
+                        NSLocalizedDescriptionKey: "Failed to decode image"
                     ])
                 }
-                return OpenAIImageEditResult(data: decodedData)
+                return OpenAIImageResult(data: imageData)
             }
-
-            return results
-        }
-
-        private func createRequest(
-            prompt: String,
-            image: Data,
-            mask: Data?,
-            n: Int,
-            size: String
-        ) throws -> URLRequest {
-            
-            let url = URL(string: "https://api.openai.com/v1/images/edits")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-
-            let boundary = UUID().uuidString
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-            var body = Data()
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n")
-            body.append("dall-e-2\r\n")
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"prompt\"\r\n\r\n")
-            body.append("\(prompt)\r\n")
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"n\"\r\n\r\n")
-            body.append("\(n)\r\n")
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"size\"\r\n\r\n")
-            body.append("\(size)\r\n")
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"response_format\"\r\n\r\n")
-            body.append("b64_json\r\n")
-
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.png\"\r\n")
-            body.append("Content-Type: image/png\r\n\r\n")
-            body.append(image)
-            body.append("\r\n")
-
-            if let mask = mask {
-                body.append("--\(boundary)\r\n")
-                body.append("Content-Disposition: form-data; name=\"mask\"; filename=\"mask.png\"\r\n")
-                body.append("Content-Type: image/png\r\n\r\n")
-                body.append(mask)
-                body.append("\r\n")
-            }
-
-            body.append("--\(boundary)--\r\n")
-
-            request.httpBody = body
-            return request
         }
 }
 
@@ -128,5 +76,13 @@ private extension Data {
         if let data = string.data(using: .utf8) {
             self.append(data)
         }
+    }
+}
+
+
+public struct OpenAIImageResult: Sendable {
+    public let data: Data
+    public init(data: Data) {
+        self.data = data
     }
 }
