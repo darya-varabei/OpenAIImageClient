@@ -23,52 +23,57 @@ public final class OpenAIImageClient: @unchecked Sendable {
             model: String = "gpt-image-1",
             size: String = "1024x1024",
             n: Int = 1
-        ) async throws -> [OpenAIImageResult] {
-            let url = URL(string: "https://api.openai.com/v1/images/generations")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            let body: [String: Any] = [
-                "prompt": prompt,
-                "model": model,
-                "n": n,
-                "size": size,
-                "response_format": "b64_json"
-            ]
-
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-            let (data, response) = try await session.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode) else {
-                let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw NSError(domain: "OpenAIImageGenerationClient", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Request failed: \(msg)"
-                ])
-            }
-
-            struct APIResponse: Decodable {
-                struct ImageData: Decodable {
-                    let b64_json: String
-                }
-                let data: [ImageData]
-            }
-
-            let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
-
-            return try decoded.data.map { imageData in
-                guard let imageData = Data(base64Encoded: imageData.b64_json) else {
-                    throw NSError(domain: "OpenAIImageGenerationClient", code: 2, userInfo: [
-                        NSLocalizedDescriptionKey: "Failed to decode image"
-                    ])
-                }
-                return OpenAIImageResult(data: imageData)
-            }
+    ) async throws -> [OpenAIImageResult] {
+        
+        let url = URL(string: "https://api.openai.com/v1/images/generations")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "prompt": prompt,
+            "model": model,
+            "n": n,
+            "size": size
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "OpenAIImageGenerationClient", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Request failed: \(msg)"
+            ])
         }
+        
+        struct APIResponse: Decodable {
+            struct ImageData: Decodable {
+                let url: String
+            }
+            let data: [ImageData]
+        }
+        
+        let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
+        
+        return try await withThrowingTaskGroup(of: OpenAIImageResult.self) { group in
+            for imageData in decoded.data {
+                group.addTask {
+                    guard let imageURL = URL(string: imageData.url) else {
+                        throw URLError(.badURL)
+                    }
+                    let (imageData, _) = try await self.session.data(from: imageURL)
+                    return OpenAIImageResult(data: imageData)
+                }
+            }
+            
+            return try await group.reduce(into: [OpenAIImageResult]()) { $0.append($1) }
+        }
+    }
 }
 
 private extension Data {
