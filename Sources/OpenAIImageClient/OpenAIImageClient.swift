@@ -35,8 +35,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
         request.httpBody = body
         
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "ImageGenKit", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Failed to edit image"
             ])
