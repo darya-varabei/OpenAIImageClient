@@ -58,20 +58,32 @@ public final class OpenAIImageClient: @unchecked Sendable {
             let data: [ImageData]
         }
         
-        let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
+        print(String(data: data, encoding: .utf8) ?? "No readable response")
         
-        return try await withThrowingTaskGroup(of: OpenAIImageResult.self) { group in
-            for imageData in decoded.data {
-                group.addTask {
-                    guard let imageURL = URL(string: imageData.url) else {
-                        throw URLError(.badURL)
+        if let decoded = try? JSONDecoder().decode(APIResponse.self, from: data) {
+            return try await withThrowingTaskGroup(of: OpenAIImageResult.self) { group in
+                for imageData in decoded.data {
+                    group.addTask {
+                        guard let imageURL = URL(string: imageData.url) else {
+                            throw URLError(.badURL)
+                        }
+                        let (imageData, _) = try await self.session.data(from: imageURL)
+                        return OpenAIImageResult(data: imageData)
                     }
-                    let (imageData, _) = try await self.session.data(from: imageURL)
-                    return OpenAIImageResult(data: imageData)
                 }
+                return try await group.reduce(into: [OpenAIImageResult]()) { $0.append($1) }
             }
-            
-            return try await group.reduce(into: [OpenAIImageResult]()) { $0.append($1) }
+        } else if let errorJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let err = errorJSON["error"] as? [String: Any],
+                  let msg = err["message"] as? String {
+            throw NSError(domain: "OpenAIImageGenerationClient", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "API Error: \(msg)"
+            ])
+        } else {
+            let msg = String(data: data, encoding: .utf8) ?? "Unknown response"
+            throw NSError(domain: "OpenAIImageGenerationClient", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "Unexpected response: \(msg)"
+            ])
         }
     }
 }
