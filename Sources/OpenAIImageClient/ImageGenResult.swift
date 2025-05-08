@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct ImageGenResult {
+public struct ImageGenResult: @unchecked Sendable {
     public let data: Data
     
     public init(data: Data) {
