@@ -20,7 +20,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
             "prompt": prompt,
             "model": model.rawValue,
             "n": n,
-            "size": size
+            "size": size.rawValue
         ]
         
         let (data, response) = try await sessionManager.session(url: URL(string: "https://api.openai.com/v1/images/generations")!, httpMethod: "POST", apiKey: apiKey, body: body)
@@ -71,7 +71,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
             "prompt": prompt,
             "model": model.rawValue,
             "n": n,
-            "size": size,
+            "size": size.rawValue,
             "image": imageFiles
         ]
         
