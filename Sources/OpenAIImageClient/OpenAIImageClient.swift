@@ -1,6 +1,35 @@
 
 import Foundation
 
+public struct OpenAIImageEditResult: Sendable {
+    public let data: Data
+    public init(data: Data) {
+        self.data = data
+    }
+}
+
+struct APIResponse: Decodable {
+    let created: Int
+    let data: [ImageData]
+    let usage: Usage
+    
+    struct ImageData: Decodable {
+        let b64_json: String
+    }
+    
+    struct Usage: Decodable {
+        let total_tokens: Int
+        let input_tokens: Int
+        let output_tokens: Int
+        let input_tokens_details: InputTokensDetails
+    }
+    
+    struct InputTokensDetails: Decodable {
+        let text_tokens: Int
+        let image_tokens: Int
+    }
+}
+
 public final class OpenAIImageClient: @unchecked Sendable {
     
     private let apiKey: String
@@ -11,17 +40,10 @@ public final class OpenAIImageClient: @unchecked Sendable {
         self.session = session
     }
     
-    public struct OpenAIImageEditResult: Sendable {
-        public let data: Data
-        public init(data: Data) {
-            self.data = data
-        }
-    }
-    
     public func generateImage(
             prompt: String,
             model: String = "gpt-image-1",
-            size: String = "1024x1024",
+            size: String = "512x512",
             n: Int = 1
     ) async throws -> [OpenAIImageResult] {
         
@@ -51,24 +73,14 @@ public final class OpenAIImageClient: @unchecked Sendable {
             ])
         }
         
-        struct APIResponse: Decodable {
-            struct ImageData: Decodable {
-                let url: String
-            }
-            let data: [ImageData]
-        }
-        
         print(String(data: data, encoding: .utf8) ?? "No readable response")
         
         if let decoded = try? JSONDecoder().decode(APIResponse.self, from: data) {
             return try await withThrowingTaskGroup(of: OpenAIImageResult.self) { group in
                 for imageData in decoded.data {
                     group.addTask {
-                        guard let imageURL = URL(string: imageData.url) else {
-                            throw URLError(.badURL)
-                        }
-                        let (imageData, _) = try await self.session.data(from: imageURL)
-                        return OpenAIImageResult(data: imageData)
+                        let imageData = Data(base64Encoded: decoded.data.first?.b64_json ?? "")
+                        return OpenAIImageResult(data: imageData ?? Data())
                     }
                 }
                 return try await group.reduce(into: [OpenAIImageResult]()) { $0.append($1) }
