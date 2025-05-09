@@ -18,7 +18,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
         
         let body: [String: Any] = [
             "prompt": prompt,
-            "model": model,
+            "model": model.rawValue,
             "n": n,
             "size": size
         ]
@@ -69,7 +69,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
         
         let body: [String: Any] = [
             "prompt": prompt,
-            "model": model,
+            "model": model.rawValue,
             "n": n,
             "size": size,
             "image": imageFiles
