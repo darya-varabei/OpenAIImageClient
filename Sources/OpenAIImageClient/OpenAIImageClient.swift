@@ -43,7 +43,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
     public func generateImage(
             prompt: String,
             model: String = "gpt-image-1",
-            size: String = "512x512",
+            size: String = "auto",
             n: Int = 1
     ) async throws -> [OpenAIImageResult] {
         
