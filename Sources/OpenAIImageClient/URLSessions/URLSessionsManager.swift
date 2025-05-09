@@ -22,6 +22,7 @@ class URLSessionsManager {
         url: URL,
         httpMethod: String,
         apiKey: String,
+        boundary: String = "",
         body: [String: Any] = [:],
         bodyData: Data = Data()
     ) async throws -> (Data, Any) {
@@ -30,7 +31,7 @@ class URLSessionsManager {
         request.httpMethod = httpMethod
         
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(boundary.isEmpty ? "multipart/form-data; boundary=\(boundary)" : "application/json", forHTTPHeaderField: "Content-Type")
         
         request.httpBody = body.isEmpty ? bodyData : try JSONSerialization.data(withJSONObject: body)
         

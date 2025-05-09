@@ -70,6 +70,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
         
         body.appendField(name: "model", value: model.rawValue, boundary: boundary)
         body.appendField(name: "prompt", value: prompt, boundary: boundary)
+        body.appendField(name: "size", value: size.rawValue, boundary: boundary)
         body.appendFileArray(name: "image", files: images, boundary: boundary)
         
         body.append("--\(boundary)--\r\n")
@@ -77,6 +78,7 @@ public final class OpenAIImageClient: @unchecked Sendable {
         let (data, response) = try await sessionManager.session(url: OpenAIEnvironment.editImageUrl,
                                                                 httpMethod: "POST",
                                                                 apiKey: apiKey,
+                                                                boundary: boundary,
                                                                 bodyData: body)
         
         guard let httpResponse = response as? HTTPURLResponse,
