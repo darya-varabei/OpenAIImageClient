@@ -31,7 +31,7 @@ class URLSessionsManager {
         request.httpMethod = httpMethod
         
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue(boundary.isEmpty ? "multipart/form-data; boundary=\(boundary)" : "application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(boundary.isEmpty ? "application/json" : "multipart/form-data; boundary=\(boundary)" , forHTTPHeaderField: "Content-Type")
         
         request.httpBody = body.isEmpty ? bodyData : try JSONSerialization.data(withJSONObject: body)
         
