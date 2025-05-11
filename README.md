@@ -1,4 +1,6 @@
-![Static Badge](https://img.shields.io/badge/Platforms-gray) ![Static Badge](https://img.shields.io/badge/iOS_%7C_macOS%20-%20blue)
+![Static Badge](https://img.shields.io/badge/Platforms-gray) ![Static Badge](https://img.shields.io/badge/iOS_%7C_macOS%20-%20blue)  ![Static Badge](https://img.shields.io/badge/Swift-gray) ![Static Badge](https://img.shields.io/badge/6.1_%7C_6.0_%7C_5.10_%7C_5.9-blue)
+
+
 
 # OpenAIImageClient
 
