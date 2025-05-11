@@ -1,3 +1,5 @@
+![Static Badge](https://img.shields.io/badge/Platforms-gray) ![Static Badge](https://img.shields.io/badge/iOS_%7C_macOS%20-%20blue)
+
 # OpenAIImageClient
 
 A lightweight Swift package for interacting with OpenAI's `gpt-image-1` model to generate or edit images using natural language prompts and image files.
